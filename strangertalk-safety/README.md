@@ -16,15 +16,9 @@ strangertalk.in ke liye safety aur legal files. Ye kisi bhi website pe chalengi,
 
 ## Kaise lagayein (3 steps)
 
-1. **Placeholders bharo.** Saari `.html` files mein ye cheezein badlo:
-   - `[DATE]` aaj ki date
-   - `[OWNER / COMPANY NAME]` aapka ya company ka naam
-   - `[CITY]`, `[CITY, STATE]`, `[ADDRESS]`, `[FULL POSTAL ADDRESS, INDIA]`
-   - `[GRIEVANCE OFFICER NAME]`, `[GRIEVANCE EMAIL]`, `[SUPPORT EMAIL]`, `[PRIVACY EMAIL]` (teeno emails ek hi ho sakte hain)
-   - `privacy.html` ki table check karo, khaas kar ye ki aap chat messages store karte ho ya nahi
-
-   Ek bhi `[...]` bacha na rahe. Ye command check karti hai:
-   `grep -n "\[" strangertalk-safety/*.html`
+1. **Details check karo.** Naam (Amit Kumar), email (strangertalk.in@gmail.com) aur date pages mein bhar di gayi hain. Bas ye dhyan do:
+   - IT Rules ke hisaab se Grievance page pe **poora postal address** hona chahiye. Abhi wahan sirf "India" likha hai, isliye `grievance.html` mein address daal dena.
+   - `privacy.html` ki table maan kar chalti hai ki chat messages server pe save **nahi** hote. Agar aap save karte ho, to wo line badal dena.
 
 2. **Upload karo.** Saari 7 files website ke main (root) folder mein daalo, jahan `index.html` ya `public/` folder hai.
    - Next.js / React (Vite) mein inhe `public/` folder mein daalo.

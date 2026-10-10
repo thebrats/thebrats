@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Chat rooms aur API pages ko Google mein dikhane ki zaroorat nahi
+Disallow: /api/
+Disallow: /chat?
+Disallow: /room/
+
+Sitemap: https://strangertalk.in/sitemap.xml
