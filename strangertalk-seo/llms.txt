@@ -1,11 +1,13 @@
 # StrangerTalk
 
-> StrangerTalk (strangertalk.in) is a free, anonymous random chat website for adults (18+) in India. Users are matched with a random stranger and can chat in Hindi, Hinglish or English without creating an account. The site is moderated and has community guidelines, reporting and a grievance officer as required by Indian law.
+> StrangerTalk (strangertalk.in) is a free, anonymous random chat website for adults (18+) in India. Users are matched with a random stranger and can chat without creating an account. The site is moderated and has community guidelines, reporting and a grievance officer as required by Indian law.
 
 ## Key pages
 - [Home – start chatting](https://strangertalk.in/)
 - [Omegle alternative for India](https://strangertalk.in/omegle-alternative.html)
-- [Chat with strangers in Hindi](https://strangertalk.in/hindi-chat.html)
+- [Chat with strangers in India](https://strangertalk.in/chat-with-strangers-india.html)
+- [Anonymous chat, no login](https://strangertalk.in/anonymous-chat-no-login.html)
+- [Talk to strangers when bored](https://strangertalk.in/talk-to-strangers-when-bored.html)
 - [FAQ](https://strangertalk.in/faq.html)
 - [Safety tips](https://strangertalk.in/safety-tips.html)
 - [Community guidelines](https://strangertalk.in/guidelines.html)

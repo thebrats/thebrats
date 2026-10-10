@@ -11,7 +11,7 @@ strangertalk.in ko Google (aur ChatGPT, Perplexity jaise AI search) mein dikhane
 | `sitemap.xml` | Site ke saare pages ki list | Root folder |
 | `llms.txt` | AI search engines (ChatGPT, Perplexity) ke liye site ka summary | Root folder |
 | `omegle-alternative.html` | Landing page: "omegle alternative india" keyword | Root folder |
-| `hindi-chat.html` | Landing page (Hindi/Hinglish): "hindi stranger chat", "ajnabi se baat" | Root folder |
+| `chat-with-strangers-india.html`, `anonymous-chat-no-login.html`, `talk-to-strangers-when-bored.html` | Long-tail keyword landing pages | Root folder |
 | `faq.html` | FAQ page, Google FAQ schema ke saath | Root folder |
 | `blog/` | Blog home + 2 articles | Root folder mein `blog/` naam se |
 
@@ -20,7 +20,7 @@ Next.js ya React mein saari files `public/` folder mein jayengi.
 
 ## ⚠️ Upload se pehle check karo
 
-- Pages maan kar chalte hain ki site **free** hai, **signup nahi** chahiye, aur **Hindi/English** mein chat hoti hai. Agar koi baat aapki site pe sach nahi hai, to bata do, main text badal dunga. Google ko galat jaankari dena ranking ke liye nuksaan karta hai.
+- Pages maan kar chalte hain ki site **free** hai, **signup nahi** chahiye. Agar koi baat aapki site pe sach nahi hai, to bata do, main text badal dunga. Google ko galat jaankari dena ranking ke liye nuksaan karta hai.
 - Video chat ka zikr maine jaan-boojh kar nahi kiya, kyunki pata nahi aapki site pe hai ya nahi. Hai to bata do, "random video chat" keyword ke liye alag page bana dunga.
 - `og-image.png` banao (1200×630, logo aur "Talk to Strangers" text) aur root folder mein daalo. Isse WhatsApp pe link share karne pe photo dikhegi.
 - Agar site pe chat ka URL `/chat?` ya `/room/` se alag hai, to `robots.txt` theek kar dena.
@@ -40,11 +40,13 @@ Isi tarah **Bing Webmaster Tools** (https://www.bing.com/webmasters) bhi setup k
 
 | Keyword | Page |
 |---|---|
-| talk to strangers, stranger chat india, random chat india | Homepage |
+| chat with strangers online free, chat with strangers no login | Homepage |
+| chat with strangers india, talk to strangers india | `chat-with-strangers-india.html` |
+| anonymous chat no login, chat with strangers without registration | `anonymous-chat-no-login.html` |
+| talk to strangers when bored, someone to talk to online free | `talk-to-strangers-when-bored.html` |
 | omegle alternative, omegle alternative india, sites like omegle | `omegle-alternative.html` |
-| hindi chat, ajnabi se baat, hindi stranger chat | `hindi-chat.html` |
 | is stranger chat safe, how to report on chat site | `faq.html`, `safety-tips.html` |
-| omegle shut down, omegle band kyun hua | `blog/omegle-shut-down-what-now.html` |
+| why did omegle shut down | `blog/omegle-shut-down-what-now.html` |
 | make friends online india | `blog/make-friends-online-safely.html` |
 
 ## Aage kya karna hai (har hafte)
