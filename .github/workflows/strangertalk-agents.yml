@@ -1,0 +1,62 @@
+name: StrangerTalk AI agents
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # Guardian: every hour
+    - cron: "23 3 * * 1"   # SEO + Competitor + Strategy: Monday 08:53 IST
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: "Which agent to run"
+        type: choice
+        options: [guardian, seo, competitor, strategy, weekly]
+        default: guardian
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: strangertalk-agents-${{ github.event.schedule || inputs.agent }}
+
+jobs:
+  guardian:
+    if: github.event.schedule == '17 * * * *' || inputs.agent == 'guardian'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python strangertalk-agents/agents.py guardian
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  weekly:
+    if: github.event.schedule == '23 3 * * 1' || (inputs.agent != '' && inputs.agent != 'guardian')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      PAGESPEED_KEY: ${{ secrets.PAGESPEED_KEY }}
+      COMPETITORS: ${{ vars.COMPETITORS }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q -r strangertalk-agents/requirements.txt
+      - name: Run agents
+        working-directory: strangertalk-agents
+        run: |
+          A="${{ inputs.agent }}"
+          if [ -z "$A" ] || [ "$A" = "weekly" ]; then
+            python agents.py seo && python agents.py competitor && python agents.py strategy
+          else
+            python agents.py "$A"
+          fi
+      - name: Save reports
+        run: |
+          git config user.name "strangertalk-agent"
+          git config user.email "actions@github.com"
+          git add strangertalk-agents/reports
+          git diff --cached --quiet || (git commit -m "Agent reports $(date +%F)" && git push)
