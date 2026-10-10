@@ -15,6 +15,7 @@ on:
 permissions:
   contents: write
   issues: write
+  models: read   # free AI via GitHub Models
 
 concurrency:
   group: strangertalk-agents-${{ github.event.schedule || inputs.agent }}
@@ -35,16 +36,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      PAGESPEED_KEY: ${{ secrets.PAGESPEED_KEY }}
-      COMPETITORS: ${{ vars.COMPETITORS }}
+      GITHUB_TOKEN: ${{ github.token }}
       GH_TOKEN: ${{ github.token }}
+      COMPETITORS: ${{ vars.COMPETITORS }}
+      AI_MODEL: ${{ vars.AI_MODEL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -q -r strangertalk-agents/requirements.txt
       - name: Run agents
         working-directory: strangertalk-agents
         run: |

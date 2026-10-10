@@ -3,9 +3,12 @@
 Usage: python agents.py guardian|seo|competitor|strategy
 
 guardian   - uptime, speed, SSL and key-page checks (no AI, free)
-seo        - on-page SEO audit + PageSpeed, summarised by Claude
-competitor - Claude researches competitors with web search
-strategy   - Claude turns the latest reports into this week's top 3 actions
+seo        - on-page SEO audit + PageSpeed, with AI advice
+competitor - compares competitor home pages (title, keywords, headings)
+strategy   - turns the latest reports into this week's top 3 actions
+
+100% free: AI comes from GitHub Models (free with any GitHub account, uses the
+built-in GITHUB_TOKEN). If AI is unavailable, reports still contain the raw checks.
 
 Reports are written to reports/<date>-<agent>.md. When an agent finds a
 problem or finishes a weekly report it also opens a GitHub issue (in Actions).
@@ -30,10 +33,11 @@ PAGES = ["/", "/chat-with-strangers-india.html", "/anonymous-chat-no-login.html"
          "/talk-to-strangers-when-bored.html", "/omegle-alternative.html", "/faq.html"]
 KEYWORDS = ["chat with strangers online free", "chat with strangers india",
             "anonymous chat no login", "talk to strangers when bored", "omegle alternative india"]
-# Leave empty to let the competitor agent find the top-ranking sites itself.
-COMPETITORS = [c for c in os.environ.get("COMPETITORS", "").split(",") if c.strip()]
+COMPETITORS = [c.strip() for c in (os.environ.get("COMPETITORS") or
+               "ome.tv,emeraldchat.com,chatrandom.com,chitchat.gg").split(",") if c.strip()]
 
-MODEL = "claude-opus-5-5"
+# Free model on GitHub Models; change via the AI_MODEL repo variable if it is retired.
+MODEL = os.environ.get("AI_MODEL") or "openai/gpt-4.1-mini"
 ROOT = Path(__file__).parent
 REPORTS = ROOT / "reports"
 TODAY = datetime.date.today().isoformat()
@@ -112,32 +116,20 @@ class PageInfo(HTMLParser):
             self.text.append(d)
 
 
-def claude(prompt, web=False, effort="medium"):
-    """One Claude call. web=True gives it web search + fetch. Returns the text answer."""
-    import anthropic
-
-    client = anthropic.Anthropic()
-    tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": 15},
-             {"type": "web_fetch_20260209", "name": "web_fetch", "max_uses": 10}] if web else []
-    messages = [{"role": "user", "content": prompt}]
-    for _ in range(5):  # resume pause_turn a few times at most
-        try:
-            r = client.beta.messages.create(
-                model=MODEL, max_tokens=16000, messages=messages, tools=tools,
-                output_config={"effort": effort},
-                betas=["server-side-fallback-2026-07-01"], fallbacks="default",
-            )
-        except anthropic.AuthenticationError:
-            sys.exit("ANTHROPIC_API_KEY is missing or invalid - add it in GitHub repo Settings > Secrets.")
-        except anthropic.RateLimitError:
-            time.sleep(60)
-            continue
-        if r.stop_reason == "refusal":
-            return "_Claude declined this request._"
-        if r.stop_reason != "pause_turn":
-            return "\n".join(b.text for b in r.content if b.type == "text").strip()
-        messages = [messages[0], {"role": "assistant", "content": r.content}]
-    return "_Agent stopped after too many web-search rounds._"
+def ai(prompt):
+    """Free AI call via GitHub Models. Returns text, or a note if AI is unavailable."""
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        return "_AI skipped (no GITHUB_TOKEN). Raw data below._"
+    req = urllib.request.Request(
+        "https://models.github.ai/inference/chat/completions",
+        data=json.dumps({"model": MODEL, "messages": [{"role": "user", "content": prompt}]}).encode(),
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.load(r)["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        return f"_AI unavailable ({e}). Raw data below._"
 
 
 def latest(agent):
@@ -171,58 +163,75 @@ def guardian():
         open_issue(f"🚨 strangertalk.in problem: {problems[0]}", report, dedupe="strangertalk.in problem")
 
 
+def page_info(path_or_url):
+    code, body, secs = fetch(path_or_url)
+    if code != 200:
+        return {"page": path_or_url, "status": code}
+    h = PageInfo()
+    h.feed(body)
+    return {"page": path_or_url, "title": h.title.strip(), "description": h.desc, "h1": h.h1[:3],
+            "canonical": h.canonical, "words": len(re.findall(r"\w+", " ".join(h.text))),
+            "imgs_without_alt": h.imgs_no_alt, "has_jsonld": "application/ld+json" in body, "load_s": secs}
+
+
+def seo_checks(p):
+    """Free rule-based checks, no AI needed."""
+    if "status" in p:
+        return [f"page returns {p['status']}"]
+    out = []
+    if not 20 <= len(p["title"]) <= 60: out.append(f"title is {len(p['title'])} chars (best 20-60)")
+    if not 70 <= len(p["description"]) <= 160: out.append(f"description is {len(p['description'])} chars (best 70-160)")
+    if len(p["h1"]) != 1: out.append(f"{len(p['h1'])} H1 tags (need exactly 1)")
+    if not p["canonical"]: out.append("no canonical link")
+    if p["words"] < 150: out.append(f"only {p['words']} words")
+    if p["imgs_without_alt"]: out.append(f"{p['imgs_without_alt']} images without alt text")
+    if not p["has_jsonld"]: out.append("no structured data (JSON-LD)")
+    if p["load_s"] > 2: out.append(f"slow ({p['load_s']}s)")
+    return out
+
+
 def seo():
-    pages = []
-    for p in PAGES:
-        code, body, secs = fetch(p)
-        if code != 200:
-            pages.append({"page": p, "status": code})
-            continue
-        h = PageInfo()
-        h.feed(body)
-        words = len(re.findall(r"\w+", " ".join(h.text)))
-        pages.append({"page": p, "title": h.title.strip(), "title_len": len(h.title.strip()),
-                      "description": h.desc, "desc_len": len(h.desc), "h1": h.h1,
-                      "canonical": h.canonical, "words": words, "imgs_without_alt": h.imgs_no_alt,
-                      "links": h.links, "has_jsonld": "application/ld+json" in body, "load_s": secs})
-    psi = "PageSpeed: not available"
-    q = urllib.parse.urlencode({"url": SITE + "/", "strategy": "mobile", "category": "performance",
-                                **({"key": os.environ["PAGESPEED_KEY"]} if os.environ.get("PAGESPEED_KEY") else {})})
+    pages = [page_info(p) for p in PAGES]
+    psi = "not available"
+    q = urllib.parse.urlencode({"url": SITE + "/", "strategy": "mobile", "category": "performance"})
     code, body, _ = fetch("https://www.googleapis.com/pagespeedonline/v5/runPagespeed?" + q, timeout=90)
     if code == 200:
-        a = json.loads(body)["lighthouseResult"]["audits"]
-        psi = {k: a[k]["displayValue"] for k in ("largest-contentful-paint", "cumulative-layout-shift",
-                                                  "total-blocking-time", "speed-index") if k in a}
-    text = claude(
+        a = json.loads(body)["lighthouseResult"]
+        psi = {"score": round(a["categories"]["performance"]["score"] * 100),
+               **{k: a["audits"][k]["displayValue"] for k in ("largest-contentful-paint", "cumulative-layout-shift")}}
+    checks = "\n".join(f"- `{p['page']}`: " + ("; ".join(seo_checks(p)) or "✅ OK") for p in pages)
+    advice = ai(
         "You are an SEO expert for strangertalk.in, a free anonymous 'chat with strangers' site for India.\n"
-        f"Target keywords: {KEYWORDS}\n\nPage data (JSON):\n{json.dumps(pages, indent=1)}\n\n"
-        f"Mobile PageSpeed: {psi}\n\n"
-        "Write a short report in simple English: 1) score out of 10, 2) the 5 most important fixes, "
-        "each with the exact new title/description/text to paste, 3) one new long-tail keyword page idea "
-        "with low competition. Be concise.", effort="medium")
-    f = save("seo", f"# SEO Report – {TODAY}\n\n{text}\n")
+        f"Target keywords: {KEYWORDS}\nPage data: {json.dumps(pages)}\nMobile PageSpeed: {psi}\n"
+        "Give the 5 most important fixes with the exact new title/description text to paste, "
+        "and one new low-competition long-tail keyword page idea. Short, simple English.")
+    f = save("seo", f"# SEO Report – {TODAY}\n\n**Mobile PageSpeed:** {psi}\n\n## Checks\n{checks}\n\n## AI advice\n{advice}\n")
     open_issue(f"📈 Weekly SEO report – {TODAY}", f.read_text(encoding="utf-8"))
 
 
 def competitor():
-    who = f"these competitors: {', '.join(COMPETITORS)}" if COMPETITORS else \
-        "the top 5 sites currently ranking on Google for 'chat with strangers' and 'omegle alternative'"
-    text = claude(
-        f"You are a competitor analyst for strangertalk.in (free anonymous stranger chat, India, 18+). "
-        f"Research {who}. For each: main features, target keywords in their title/headings, "
-        "anything new recently, and one weakness we can beat. Then list 3 things strangertalk.in should "
-        "copy or do better, and 3 low-competition long-tail keywords they are ignoring. "
-        "Only state facts you found; cite the URL. Keep it short.", web=True, effort="medium")
-    f = save("competitor", f"# Competitor Report – {TODAY}\n\n{text}\n")
+    rows = []
+    for c in COMPETITORS:
+        p = page_info("https://" + c.removeprefix("https://").removeprefix("http://"))
+        rows.append(p)
+    table = "\n".join(f"| {p['page']} | {p.get('title', p.get('status'))} | {p.get('description', '')[:120]} | "
+                      f"{', '.join(p.get('h1', []))[:80]} | {p.get('words', '')} |" for p in rows)
+    advice = ai(
+        "You are a competitor analyst for strangertalk.in (free anonymous stranger chat, India, 18+). "
+        f"Here is data from competitor home pages: {json.dumps(rows)}\n"
+        "Using ONLY this data: which keywords they target, 3 things strangertalk.in should do better, "
+        "and 3 low-competition long-tail keywords they ignore. Short, simple English.")
+    f = save("competitor", f"# Competitor Report – {TODAY}\n\n| Site | Title | Description | H1 | Words |\n"
+                           f"|---|---|---|---|---|\n{table}\n\n## AI analysis\n{advice}\n")
     open_issue(f"🕵️ Weekly competitor report – {TODAY}", f.read_text(encoding="utf-8"))
 
 
 def strategy():
-    text = claude(
-        "You are the growth strategist for strangertalk.in, run by one non-technical owner with little time "
-        "and a small budget. Read these reports and give exactly 3 actions for this week, ordered by impact. "
-        "Each action: what to do, why, time needed, and how to check it worked. Simple English, short.\n\n"
-        f"SEO report:\n{latest('seo')}\n\nCompetitor report:\n{latest('competitor')}", effort="high")
+    text = ai(
+        "You are the growth strategist for strangertalk.in, run by one non-technical owner with no budget. "
+        "Read these reports and give exactly 3 free actions for this week, ordered by impact. "
+        "Each: what to do, why, time needed, how to check it worked. Short, simple English.\n\n"
+        f"SEO report:\n{latest('seo')}\n\nCompetitor report:\n{latest('competitor')}")
     f = save("strategy", f"# This Week's Plan – {TODAY}\n\n{text}\n")
     open_issue(f"🧠 This week's top 3 actions – {TODAY}", f.read_text(encoding="utf-8"))
 
